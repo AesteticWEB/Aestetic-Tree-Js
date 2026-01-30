@@ -22,6 +22,7 @@ body {
   color: var(--ink);
   min-height: 100vh;
   overflow: hidden;
+  cursor: none;
 }
 
 #bg {
@@ -93,7 +94,7 @@ body {
 
 .title {
   font-family: 'UnifrakturCook', 'Cinzel', serif;
-  font-size: clamp(5.375rem, 13.4vw, 10.775rem) !important;
+  font-size: clamp(3.9rem, 13.0vw, 9.1rem) !important;
   line-height: 0.88;
   letter-spacing: 0.22rem;
   text-shadow: none;
@@ -320,6 +321,52 @@ a {
   inset: 0;
   pointer-events: none;
   z-index: 1;
+}
+
+.cursor {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.cursor-core,
+.cursor-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  transition: transform 0.08s ease, opacity 0.2s ease;
+  mix-blend-mode: screen;
+}
+
+.cursor-core {
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.95), rgba(255, 90, 140, 0.8));
+  box-shadow: 0 0 18px rgba(255, 90, 140, 0.8), 0 0 28px rgba(108, 246, 255, 0.6);
+}
+
+.cursor-ring {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 22px rgba(108, 246, 255, 0.5), inset 0 0 12px rgba(255, 90, 140, 0.35);
+  background: radial-gradient(circle, rgba(255, 90, 140, 0.08), transparent 60%);
+}
+
+.cursor.is-hidden .cursor-core,
+.cursor.is-hidden .cursor-ring {
+  opacity: 0;
+}
+
+.cursor.is-down .cursor-core {
+  transform: translate(-50%, -50%) scale(1.4);
+}
+
+.cursor.is-down .cursor-ring {
+  transform: translate(-50%, -50%) scale(0.85);
 }
 
 .grain {

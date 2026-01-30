@@ -47,7 +47,6 @@ const coreMaterial = new THREE.MeshPhysicalMaterial({
 const core = new THREE.Mesh(coreGeometry, coreMaterial);
 core.castShadow = true;
 core.receiveShadow = true;
-// center core removed from scene
 
 const rings = [];
 for (let i = 0; i < 3; i += 1) {
@@ -158,6 +157,51 @@ window.addEventListener('pointermove', (event) => {
   cursor.y = -(event.clientY / window.innerHeight) * 2 + 1;
 });
 
+const uiCursor = document.querySelector('.cursor');
+const uiCursorCore = document.querySelector('.cursor-core');
+const uiCursorRing = document.querySelector('.cursor-ring');
+let cursorX = window.innerWidth / 2;
+let cursorY = window.innerHeight / 2;
+let ringX = cursorX;
+let ringY = cursorY;
+let cursorVisible = false;
+
+function updateCursor() {
+  if (uiCursorCore) {
+    uiCursorCore.style.transform = `translate(${cursorX}px, ${cursorY}px)`;
+  }
+  if (uiCursorRing) {
+    ringX += (cursorX - ringX) * 0.35;
+    ringY += (cursorY - ringY) * 0.35;
+    uiCursorRing.style.transform = `translate(${ringX}px, ${ringY}px)`;
+  }
+  requestAnimationFrame(updateCursor);
+}
+
+updateCursor();
+
+window.addEventListener('pointermove', (event) => {
+  cursorX = event.clientX;
+  cursorY = event.clientY;
+  if (uiCursor && !cursorVisible) {
+    uiCursor.classList.remove('is-hidden');
+    cursorVisible = true;
+  }
+});
+
+window.addEventListener('pointerleave', () => {
+  if (uiCursor) uiCursor.classList.add('is-hidden');
+  cursorVisible = false;
+});
+
+window.addEventListener('pointerdown', () => {
+  if (uiCursor) uiCursor.classList.add('is-down');
+});
+
+window.addEventListener('pointerup', () => {
+  if (uiCursor) uiCursor.classList.remove('is-down');
+});
+
 async function loadStackIcons() {
   const icons = document.querySelectorAll('.stack-icon[data-icon]');
   const requests = Array.from(icons).map(async (icon) => {
@@ -194,13 +238,13 @@ const fonts = [
   "'DM Serif Display', 'Cinzel', serif",
   "'Playfair Display', 'Cinzel', serif",
   "'Orbitron', 'Rajdhani', sans-serif",
-  "'Syncopate', 'Rajdhani', sans-serif",
   "'Space Grotesk', 'Rajdhani', sans-serif",
   "'Cinzel', serif",
   "'Rajdhani', system-ui, sans-serif",
 ];
-const letterSpacing = ['0.08rem', '0.18rem', '0.1rem', '0.32rem', '0.42rem', '0.2rem', '0.28rem', '0.22rem'];
+const letterSpacing = ['0.08rem', '0.18rem', '0.1rem', '0.32rem', '0.2rem', '0.28rem', '0.22rem'];
 let fontIndex = 0;
+let currentFont = '';
 
 function triggerTyping(element) {
   if (!element) return;
@@ -217,9 +261,28 @@ function triggerTyping(element) {
   });
 }
 
+const typingTimers = new WeakMap();
+function runTypingOnce(element) {
+  if (!element) return;
+  const existing = typingTimers.get(element);
+  if (existing) clearTimeout(existing);
+  const timer = setTimeout(() => triggerTyping(element), 50);
+  typingTimers.set(element, timer);
+}
+
 function applyFontCycle() {
-  const font = fonts[fontIndex % fonts.length];
-  const spacing = letterSpacing[fontIndex % letterSpacing.length];
+  let nextIndex = fontIndex % fonts.length;
+  let font = fonts[nextIndex];
+  if (fonts.length > 1) {
+    let guard = 0;
+    while (font === currentFont && guard < fonts.length + 1) {
+      nextIndex = (nextIndex + 1) % fonts.length;
+      font = fonts[nextIndex];
+      guard += 1;
+    }
+  }
+  const spacing = letterSpacing[nextIndex % letterSpacing.length];
+  currentFont = font;
   if (title) {
     title.style.fontFamily = font;
     title.style.letterSpacing = spacing;
@@ -228,21 +291,35 @@ function applyFontCycle() {
     subtitle.style.fontFamily = font;
     subtitle.style.letterSpacing = spacing;
   }
-  triggerTyping(titleText);
-  triggerTyping(subtitleText);
-  fontIndex += 1;
+  runTypingOnce(titleText);
+  runTypingOnce(subtitleText);
+  fontIndex = (nextIndex + 1) % fonts.length;
 }
 
-applyFontCycle();
-setInterval(applyFontCycle, 2600);
+let fontCycleTimer = null;
+async function startFontCycle() {
+  if (fontCycleTimer) return;
+  if (document.fonts?.load) {
+    try {
+      await Promise.all(
+        fonts.map((font) => document.fonts.load(`1em ${font}`))
+      );
+    } catch (_) {}
+  }
+  const run = () => {
+    applyFontCycle();
+    fontCycleTimer = setTimeout(run, 3600);
+  };
+  run();
+}
+
+startFontCycle();
 
 function animate() {
   const elapsed = clock.getElapsedTime();
 
   group.rotation.y = elapsed * 0.12 + cursor.x * 0.2;
   group.rotation.x = Math.sin(elapsed * 0.2) * 0.08 + cursor.y * 0.15;
-
-  // core removed
 
   rings.forEach((ring, index) => {
     ring.rotation.z += 0.001 + index * 0.0006;
